@@ -156,6 +156,8 @@ public class SkillDialog {
                 slotRow.setOnMouseClicked(e -> {
                     if (waitingForSlot && selectedSkill != null) {
                         equipSkillToSlot(slotIdx);
+                    } else if (sk != null) {
+                        showEquippedSkillDetail(sk, slotIdx);
                     }
                 });
             }
@@ -245,6 +247,30 @@ public class SkillDialog {
         refreshSlots();
         refreshSkillList();
         // skill ที่ถูกแทนที่จะกลับมาใน list
+    }
+
+    /**
+     * แสดง popup รายละเอียดสกิลที่สวมใส่อยู่ พร้อมปุ่ม "ถอดออก"
+     */
+    private void showEquippedSkillDetail(BaseSkill sk, int slotIdx) {
+        String details = sk.getDescription() + "\n" +
+                "ประเภทดาเมจ: " + sk.getDamageType() + "\n" +
+                "Mana ที่ใช้: " + sk.getManaCost();
+
+        GamePopup popup = new GamePopup(dialogStage, sk.getName(), details);
+
+        popup.addButton("ถอดออก", () -> {
+            popup.close();
+            // ถอดสกิลออกจากช่องโดยตั้งค่าเป็น null
+            player.setSkillSlot(slotIdx, null);
+
+            // รีเฟรชหน้าจอทั้งสองฝั่ง
+            refreshSlots();
+            refreshSkillList(); // สกิลจะกลับไปโผล่ในลิสต์ขวาอัตโนมัติเพราะ isEquipped จะเป็น false
+        });
+
+        popup.addButton("ปิด", popup::close);
+        popup.show();
     }
 
     /**

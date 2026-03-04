@@ -3,6 +3,7 @@ package gui.components;
 import interfaces.Consumable;
 import interfaces.Equippable;
 import interfaces.Trowable;
+import javafx.animation.FadeTransition;
 import javafx.geometry.*;
 import javafx.scene.*;
 import javafx.scene.control.*;
@@ -11,6 +12,7 @@ import javafx.scene.image.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.*;
 import javafx.stage.*;
+import javafx.util.Duration;
 import logic.base.BaseItem;
 import logic.entities.Player;
 import logic.game.ResourceManager;
@@ -30,6 +32,7 @@ public class InventoryDialog {
     private Runnable onClose;
     private ResourceManager rm;
 
+    private VBox leftPanel;
     private VBox weaponSlot, armorSlot;
     private GridPane inventoryGrid;
 
@@ -66,7 +69,7 @@ public class InventoryDialog {
         HBox content = new HBox(15);
 
         // ===== ซ้าย: Equipment =====
-        VBox leftPanel = new VBox(10);
+        leftPanel = new VBox(10);
         leftPanel.setPrefWidth(250);
         leftPanel.setAlignment(Pos.TOP_CENTER);
         leftPanel.setStyle("-fx-background-color: rgba(0,0,0,0.1); -fx-padding: 10; -fx-background-radius: 5;");
@@ -77,22 +80,8 @@ public class InventoryDialog {
         playerImg.setFitHeight(100);
         playerImg.setPreserveRatio(true);
 
-        Label equipTitle = new Label("Equipment");
-        equipTitle.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #4a2800;");
-
-        // Weapon slot
-        weaponSlot = createEquipSlot("⚔ อาวุธ", player.getEquippedWeapon());
-        weaponSlot.setOnMouseClicked(e -> {
-            if (player.getEquippedWeapon() != null) showEquipInfo(player.getEquippedWeapon());
-        });
-
-        // Armor slot
-        armorSlot = createEquipSlot("🛡 เกราะ", player.getEquippedArmor());
-        armorSlot.setOnMouseClicked(e -> {
-            if (player.getEquippedArmor() != null) showEquipInfo(player.getEquippedArmor());
-        });
-
-        leftPanel.getChildren().addAll(playerImg, equipTitle, weaponSlot, armorSlot);
+        // เรียกเมธอดแยกเพื่อวาดเนื้อหาใน leftPanel
+        rebuildLeftPanel();
 
         // ===== ขวา: Inventory Grid =====
         VBox rightPanel = new VBox(10);
@@ -292,14 +281,56 @@ public class InventoryDialog {
         popup.show();
     }
 
+    private void rebuildLeftPanel() {
+        leftPanel.getChildren().clear(); // ล้างของเก่าออก
+
+        // รูปตัวละคร
+        ImageView playerImg = new ImageView(rm.loadImage(player.getImagePath(), 100, 100));
+        playerImg.setFitWidth(100);
+        playerImg.setFitHeight(100);
+        playerImg.setPreserveRatio(true);
+
+        Label equipTitle = new Label("Equipment");
+        equipTitle.setStyle("-fx-font-size: 13; -fx-font-weight: bold; -fx-text-fill: #4a2800;");
+
+        // Weapon slot
+        weaponSlot = createEquipSlot("⚔ อาวุธ", player.getEquippedWeapon());
+        weaponSlot.setOnMouseClicked(e -> {
+            if (player.getEquippedWeapon() != null) showEquipInfo(player.getEquippedWeapon());
+        });
+
+        // Armor slot
+        armorSlot = createEquipSlot("🛡 เกราะ", player.getEquippedArmor());
+        armorSlot.setOnMouseClicked(e -> {
+            if (player.getEquippedArmor() != null) showEquipInfo(player.getEquippedArmor());
+        });
+
+        leftPanel.getChildren().addAll(playerImg, equipTitle, weaponSlot, armorSlot);
+    }
+
     /**
-     * อัปเดต equip slots ด้านซ้าย
+     * อัปเดต equip slots ด้านซ้าย พร้อมเอฟเฟกต์ Fade
      */
     private void refreshEquipSlots() {
-        // ง่ายที่สุดคือ close แล้วเปิดใหม่
-        // แต่ถ้าต้องการ live update ต้องเก็บ reference ของ parent
-        dialogStage.close();
-        onClose.run();
+        // 1. สร้างเอฟเฟกต์ Fade Out (ทำให้จางลง) ให้กับ leftPanel
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(150), leftPanel);
+        fadeOut.setFromValue(1.0);  // ความชัด 100%
+        fadeOut.setToValue(0.2);  // จางลงเหลือ 20%
+
+        // 2. กำหนดว่าถ้า Fade Out เสร็จแล้ว ให้ทำอะไรต่อ
+        fadeOut.setOnFinished(e -> {
+            // อัปเดตข้อมูลไอเทมใหม่ใส่ leftPanel (เมธอดที่เราสร้างไว้รอบที่แล้ว)
+            rebuildLeftPanel();
+
+            // 3. สร้างเอฟเฟกต์ Fade In (ทำให้สว่างกลับมา)
+            FadeTransition fadeIn = new FadeTransition(Duration.millis(150), leftPanel);
+            fadeIn.setFromValue(0.2); // เริ่มจาก 20%
+            fadeIn.setToValue(1.0); // กลับมาสว่างเต็มที่ 100%
+            fadeIn.play(); // สั่งรัน Fade In
+        });
+
+        // สั่งรัน Fade Out เพื่อเริ่มกระบวนการ
+        fadeOut.play();
     }
 
     /**
